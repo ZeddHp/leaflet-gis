@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Urban Zone Explorer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+
+    .info {
+      padding: 10px;
+      background: white;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-ajax/dist/leaflet.ajax.min.js"></script>
+  <script>
+    // Initialize the map centered on Valmiera, Latvia
+    const map = L.map('map').setView([57.541, 25.429], 16);
+
+    // Essential layers
+    const ortofotoLayer = L.tileLayer.wms("https://lvmgeoserver.lvm.lv/geoserver/ows?", {
+      layers: 'public:Orto_LKS',
+      format: 'image/png',
+      transparent: true,
+      version: '1.3.0',
+      attribution: "Ortofoto WMS Service"
+    }).addTo(map);
+
+    const canopyHeightLayer = L.tileLayer.wms("https://lvmgeoserver.lvm.lv/geoserver/ows?", {
+      layers: 'public:CanopyHeightLKS',
+      format: 'image/png',
+      transparent: true,
+      version: '1.3.0',
+      attribution: "Vegetation Surface Model, 1st Cycle"
+    });
+
+    const buildingLayer = L.tileLayer.wms("https://lvmgeoserver.lvm.lv/geoserver/ows?", {
+      layers: 'publicwfs:kkbuilding',
+      format: 'image/png',
+      transparent: true,
+      version: '1.3.0',
+      attribution: "Ēkas: Ēku ārējās kontūras"
+    });
+
+    const forestryLayer = L.tileLayer.wms("https://lvmgeoserver.lvm.lv/geoserver/ows?", {
+      layers: 'publicwfs:lvmforestry',
+      format: 'image/png',
+      transparent: true,
+      version: '1.3.0',
+      attribution: "LVM reģioni"
+    });
+
+    // Add the GeoJSON vector layer with interactivity and images
+    const vectorLayer = L.geoJSON(null, {
+      onEachFeature: function (feature, layer) {
+        if (feature.properties) {
+          // Add image if `picture` property is present
+          const imageHTML = feature.properties.picture ? `<br><img src="${feature.properties.picture}" alt="Building Image" style="width:100%; max-width:200px; height:auto;">` : '';
+          layer.bindPopup(`
+            <b>Name:</b> ${feature.properties.name || 'N/A'}<br>
+            <b>Address:</b> ${feature.properties.address || 'N/A'}<br>
+            ${imageHTML}
+          `);
+        }
+      }
+    }).addTo(map);
+
+    // Load GeoJSON data from data.geojson file
+    fetch('data.geojson')
+      .then(response => response.json())
+      .then(data => vectorLayer.addData(data));
+
+    // Define the overlay map layers
+    const overlayMaps = {
+      "Ortofoto Layer": ortofotoLayer,
+      "Vegetation Canopy Height": canopyHeightLayer,
+      "Building Layer": buildingLayer,
+      "Forestry Regions": forestryLayer,
+      "GeoJSON data": vectorLayer
+    };
+
+    // Add layer control to the map
+    L.control.layers(null, overlayMaps).addTo(map);
+  </script>
+</body>
+
+</html>
